@@ -1,4 +1,4 @@
-world=/terraria-server/server/official-server/worlds/server-world.wld
+world=/home/cdonat-findes/git/caiodonat/terraria-server/server/official-server/worlds/server-world.wld
 maxplayers=7
 port=7777
 password=!@QW12qw

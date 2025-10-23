@@ -1,179 +1,115 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory, Response
 import subprocess
 import psutil
+from datetime import datetime
+import re
 
 app = Flask(__name__)
+service_name = 'terraria-server'
+log_file_path = '/terraria-server/server/official-server.log' # 'terraria-server/server/official-server.log'
+config_path = '/terraria-server/server/serverconfig.txt'
 
 
 @app.route('/', methods=['GET'])
 def control_index():
-    return '''
-    <html>
-    <head>
-        <title>Terraria Dashboard</title>
-        <script>
-            function updateStats() {
-                fetch('/htop')
-                    .then(response => response.json())
-                    .then(data => {
-                        document.getElementById('cpu').innerText = data.cpu_percent !== undefined ? data.cpu_percent + '%' : 'N/A';
-                        document.getElementById('mem').innerText = data.memory_percent !== undefined ? data.memory_percent + '%' : 'N/A';
-                    })
-                    .catch(() => {
-                        document.getElementById('cpu').innerText = 'Erro';
-                        document.getElementById('mem').innerText = 'Erro';
-                    });
-            }
-            function updateLogs() {
-                fetch('/logs')
-                    .then(response => response.json())
-                    .then(data => {
-                        var logsDiv = document.getElementById('logs');
-                        logsDiv.innerHTML = data.replace(/\\n/g, '<br>');
-                        logsDiv.scrollTop = logsDiv.scrollHeight;
-                    })
-                    .catch(() => {
-                        var logsDiv = document.getElementById('logs');
-                        logsDiv.innerText = 'Erro ao carregar logs.';
-                        logsDiv.scrollTop = logsDiv.scrollHeight;
-                    });
-            }
-            function controlService(action) {
-                fetch('/service/terraria-server/' + action, {method: 'POST'})
-                    .then(response => response.json())
-                    .then(data => {
-                        let msg = '';
-                        if (data.success !== undefined) {
-                            msg = data.success ? 'Ação "' + action + '" executada com sucesso.' : 'Falha ao executar ação: ' + action;
-                        } else if (data.error) {
-                            msg = 'Erro: ' + data.error;
-                        } else {
-                            msg = 'Resposta desconhecida.';
-                        }
-                        document.getElementById('service-status-msg').innerText = msg;
-                    })
-                    .catch(() => {
-                        document.getElementById('service-status-msg').innerText = 'Erro ao comunicar com o serviço.';
-                    });
-            }
+    return send_from_directory('static', 'index.html')
 
-            function updateServiceStatus() {
-                fetch('/service/terraria-server/status', {method: 'GET'})
-                    .then(response => response.json())
-                    .then(data => {
-                        var statusCircle = document.getElementById('service-status-circle');
-                        var statusText = document.getElementById('service-status-text');
-                        if (data.success === true) {
-                            statusCircle.style.background = '#2ecc40'; // verde
-                            statusText.innerText = 'Ativo';
-                        } else if (data.success === false) {
-                            statusCircle.style.background = '#ff4136'; // vermelho
-                            statusText.innerText = 'Parado';
-                        } else {
-                            statusCircle.style.background = '#aaaaaa'; // cinza
-                            statusText.innerText = 'Desconhecido';
-                        }
-                    })
-                    .catch(() => {
-                        var statusCircle = document.getElementById('service-status-circle');
-                        var statusText = document.getElementById('service-status-text');
-                        statusCircle.style.background = '#aaaaaa';
-                        statusText.innerText = 'Erro';
-                    });
-            }
-            setInterval(updateStats, 2000);
-            setInterval(updateLogs, 5000);
-            setInterval(updateServiceStatus, 5000);
-            window.onload = function() {
-                updateStats();
-                updateLogs();
-                updateServiceStatus();
-            };
-        </script>
-    </head>
-    <body>
-        <h1>Terraria Dashboard</h1>
-        <div>
-            <strong>CPU:</strong> <span id="cpu">...</span><br>
-            <strong>Memória:</strong> <span id="mem">...</span>
-        </div>
-        <hr>
-        <h2>Controle do Serviço</h2>
-        <div>
-            <button onclick="controlService('start')">Iniciar</button>
-            <button onclick="controlService('stop')">Parar</button>
-            <button onclick="controlService('restart')">Reiniciar</button>
-            <span style="margin-left:30px;vertical-align:middle;position:relative;">
-                <span id="service-status-circle" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#aaaaaa;border:2px solid #333;vertical-align:middle;cursor:pointer;"
-                    onmouseover="document.getElementById('status-legend').style.display='block'"
-                    onmouseout="document.getElementById('status-legend').style.display='none'"
-                ></span>
-                <span id="service-status-text" style="margin-left:8px;font-weight:bold;vertical-align:middle;">...</span>
-                <span id="status-legend" style="display:none;position:absolute;left:30px;top:22px;background:#fff;border:1px solid #333;padding:6px 12px;border-radius:6px;box-shadow:0 2px 8px #0002;font-size:13px;z-index:10;white-space:nowrap;">
-                    <span style="color:#2ecc40;font-weight:bold;">●</span> Ativo<br>
-                    <span style="color:#ff4136;font-weight:bold;">●</span> Parado<br>
-                    <span style="color:#aaaaaa;font-weight:bold;">●</span> Desconhecido/Erro
-                </span>
-            </span>
-        </div>
-        <div id="service-status-msg" style="margin-top:8px;color:#007700;font-weight:bold;"></div>
-        <hr>
-        <h2>Logs do Servidor</h2>
-        <div id="logs" style="background:#222;color:#eee;padding:10px;height:300px;overflow:auto;font-family:monospace;font-size:13px;white-space:pre-wrap;"></div>
-    </body>
-    </html>
-    ''', 200
-
-@app.route('/logs', methods=['GET'])
-def get_logs():
+@app.route('/logs/tail')
+def tail_logs():
     try:
-        with open('/terraria-server/server/official-server.log', 'r') as f:
-            logs = f.read()
-        return jsonify(logs.split('\n')), 200
-    except FileNotFoundError:
-        return jsonify(['Log file not found']), 400
+        with open(log_file_path, 'r') as f:
+            lines = f.readlines()[-20:]
+        return Response('\n'.join(line.strip() for line in lines), mimetype='text/plain')
     except Exception as e:
-        return jsonify([str(e)]), 500
+        return Response(f"ERROR: {str(e)}", mimetype='text/plain')
 
-"""
-@todo:
-    - change to status; get {cpu, memory, status}
-"""
-@app.route('/htop', methods=['GET'])
-def get_htop():
+@app.route('/logs/stream')
+def stream_logs():
+    def event_stream():
+        try:
+            with open(log_file_path, 'r') as f:
+                # Vai para o final do arquivo
+                f.seek(0, 2)
+                while True:
+                    line = f.readline()
+                    if line:
+                        yield f"{line.strip()}\n"
+                    else:
+                        import time
+                        time.sleep(1)
+        except Exception as e:
+            yield f"ERROR: {str(e)}\n"
+    return Response(event_stream(), mimetype='text/event-stream')
+
+@app.route('/specs', methods=['GET'])
+def get_specs():
     try:
         cpu_percent = psutil.cpu_percent(interval=1)
-        mem = psutil.virtual_memory()
-        mem_percent = mem.percent
+        mem_percent = psutil.virtual_memory().percent
+        
+        status_result = subprocess.run(
+            ['systemctl', 'is-active', service_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        service_status = status_result.stdout.strip() == 'active'
+
         return jsonify({
-            'cpu_percent': round(cpu_percent, 2),
-            'memory_percent': round(mem_percent, 2)
+            'cpu': round(cpu_percent, 2),
+            'ram': round(mem_percent, 2),
+            'online': service_status
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-"""
-@todo:
-    - allow only POST for start/stop/save
-"""
-@app.route('/service/terraria-server/<action>', methods=['POST', 'GET'])
+@app.route('/service/<action>', methods=['POST', 'GET'])
 def control_service(action):
-    name = 'terraria-server'
-    if action not in ['start', 'stop', 'restart', 'status']:
+    if action not in ['start', 'stop']:
         return jsonify({'error': 'Invalid action'}), 400
     try:
-        result = subprocess.run(['systemctl', action, name],
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                text=True)
+        result = subprocess.run(['sudo','systemctl', action, service_name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True)
 
         return jsonify({'success': result.returncode == 0}), 201
     except Exception as e:
         return jsonify({'success': False}), 400
 
-"""
-@todo: route to download world backups
-"""
+@app.route('/terminal', methods=['POST'])
+def control_terminal():
+    data = request.get_json()
+    command = data.get('command') if data else None
+    try:
+        result = subprocess.run(
+            ['screen', '-S', service_name, '-X', 'stuff', f'{command}\r'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        return jsonify({'success': result.returncode == 0}), 201
+    except Exception as e:
+        return jsonify({'success': False}), 400
+
+@app.route('/world', methods=['GET'])
+def download_world():
+    server_world_name = 'server-world.wld'
+    server_world_path= '/terraria-server/server/official-server/worlds/'
+    try:
+        with open(config_path, 'r') as f:
+            for line in f:
+                match = re.match(r'world\s*=\s*(.+)', line.strip()).group(1)
+                if match:
+                    server_world_path = match.rsplit('/', 1)[0]
+                    server_world_name = match.split('/')[-1]
+    except Exception:
+        pass
+    
+    download_name = datetime.now().strftime('%Y%m%d_%H%M%S') + '_' + server_world_name
+    return send_from_directory(server_world_path, server_world_name, as_attachment=True, download_name=download_name)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -1,0 +1,137 @@
+<html>
+
+<head>
+    <!-- <title>Terraria Dashboard</title> -->
+    <script>
+        function updateStatus() {
+            fetch('/specs')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('cpu').innerText = data.cpu !== undefined ? data.cpu + '%' : 'N/A';
+                    document.getElementById('mem').innerText = data.ram !== undefined ? data.ram + '%' : 'N/A';
+                    document.getElementById('online').innerText = data.online !== undefined ? `${data.online}` : 'N/A';
+                })
+                .catch(() => {
+                    document.getElementById('cpu').innerText = 'Erro';
+                    document.getElementById('mem').innerText = 'Erro';
+                    document.getElementById('online').innerText = 'Erro';
+                });
+        }
+        function controlService(action) {
+            fetch('/service/' + action, { method: 'POST' })
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('service-res').innerText = data;
+                })
+                .catch(() => {
+                    document.getElementById('service-res').innerText = 'erro';
+                })
+                .finally(() => {
+                    setTimeout(() => {
+                        document.getElementById('service-res').innerText = '';
+                    }, 3000);
+                });
+        }
+        function tailLogs() {
+            const linesInput = document.getElementById('log-lines-input');
+            const lines = linesInput ? /* parseInt(linesInput.value, 10) || */ 20 : 20;
+            const logContainer = document.getElementById('logs');
+            fetch(`/logs/tail?lines=${lines}`)
+                .then(response => response.text())
+                .then(data => {
+                    logContainer.innerHTML = '';
+                    const logLines = data.trim().split('\n');
+                    logLines.forEach(line => {
+                        const logItem = document.createElement('li');
+                        logItem.textContent = line;
+                        logContainer.appendChild(logItem);
+                    });
+                })
+                .catch(() => {
+                    const logContainer = document.getElementById('logs');
+                    logContainer.innerHTML = '<li>Erro ao carregar logs</li>';
+                })
+                .finally(() => {
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                });
+        }
+        function updateLogSettings() {
+            const lines = /* parseInt(document.getElementById('log-lines-input').value, 10) || */ 20;
+            const refresh = /* parseFloat(document.getElementById('log-refresh-input').value) || */ 1;
+            logLineCount = lines;
+            clearInterval(window.logInterval);
+            window.logInterval = setInterval(tailLogs, refresh * 1000);
+            tailLogs();
+        };
+        function toggleLogWatch() {
+            const watch = document.getElementById('log-watch-toggle').checked;
+            if (watch) {
+                updateLogSettings();
+            } else {
+                clearInterval(window.logInterval);
+            }
+        }
+        function sendTerminalCommand(command) {
+            fetch('/terminal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ command: command })
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Command sent:', data);
+            })
+            .catch(() => {
+                console.error('Error sending command');
+            });
+        }
+
+        setInterval(updateStatus, 2000);
+        window.onload = function () {
+            updateStatus();
+        };
+    </script>
+</head>
+
+<body>
+    <!-- <h1>Dashboard Servidor Terraria</h1> -->
+
+    <h2>Status</h2>
+    <div>
+        <strong>CPU: </strong> <span id="cpu">...</span></br>
+        <strong>RAM: </strong> <span id="mem">...</span></br>
+        <strong>Online: </strong> <span id="online">...</span>
+    </div>
+    <hr>
+
+    <h2>Admin</h2>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <button onclick="controlService('start')">Iniciar</button>
+        <button onclick="controlService('stop')">Parar</button>
+        <div id="service-res" style="margin-left: 10px;"></div>
+    </div>
+    <div style="margin-top: 10px;">
+        <input type="text" id="command-input" placeholder="Digite o comando" style="width:200px;">
+        <button onclick="sendTerminalCommand(document.getElementById('command-input').value)">Enviar Comando</button>
+    </div>
+    </div>
+    <hr>
+
+    <h2>Utilidades</h2>
+    <a href="/world" download><button>Download Mundo</button></a>
+
+    <h3>Logs</h3>
+    <div style="margin-bottom:10px;">
+        <label for="log-watch-toggle" style="margin-left:10px;">Watch:</label>
+        <input type="checkbox" id="log-watch-toggle" unchecked onchange="toggleLogWatch()">
+    </div>
+    </div>
+    <ul id="logs" style="height:200px;overflow-y:auto;border:1px solid #ccc;padding:5px;list-style-type:monospace;">
+        <li>Habilite o modo de acompanhamento (watch) para ver os logs em tempo real.</li>
+    </ul>
+    <!-- <iframe id="logs-iframe" src="/logs-stream" style="width:100%;height:200px;border:1px solid #ccc;margin-top:10px;"></iframe> -->
+</body>
+
+</html>
