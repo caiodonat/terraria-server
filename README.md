@@ -1,4 +1,5 @@
-# terraria-server
+# Terraria server (self-host linux)
+
 Self host server with dashboard management
 
 ## todo
@@ -7,6 +8,6 @@ Self host server with dashboard management
 - [ ] upload inicial de arquivo de mundo.
 - [ ] backup/download de arquivo do mundo.
 - [ ] dashboard.py configurado como serviço (systemctl).
-- [ ] 
+- [ ] ...
 
 ---

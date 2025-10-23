@@ -1,0 +1,16 @@
+# /etc/systemd/system/terraria-server.service
+[Unit]
+Description=Proxy TCP Terraria via socat
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/screen -S terraria -Dm /terraria-server/server/start-server.sh
+ExecStop=/usr/bin/screen -S terraria -p 0 -X stuff "exit^M"
+Restart=always
+User=ec2-user
+StandardOutput=file:/terraria-server/linux-service/systemctl.log
+StandardError=file:/terraria-server/linux-service/systemctl.log
+
+[Install]
+WantedBy=multi-user.target

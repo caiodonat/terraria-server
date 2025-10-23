@@ -1,0 +1,4 @@
+world=/server/worlds/server-world.wld
+maxplayers=7
+port=7777
+password=!@QW12qw
