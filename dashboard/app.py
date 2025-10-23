@@ -26,10 +26,10 @@ def control_index():
             }
             function updateLogs() {
                 fetch('/logs')
-                    .then(response => response.text())
+                    .then(response => response.json())
                     .then(data => {
                         var logsDiv = document.getElementById('logs');
-                        logsDiv.innerHTML = data;
+                        logsDiv.innerHTML = data.replace(/\\n/g, '<br>');
                         logsDiv.scrollTop = logsDiv.scrollHeight;
                     })
                     .catch(() => {
@@ -127,14 +127,18 @@ def control_index():
 @app.route('/logs', methods=['GET'])
 def get_logs():
     try:
-        with open('/var/log/terraria-server.log', 'r') as f:
+        with open('/terraria-server/server/official-server.log', 'r') as f:
             logs = f.read()
-        return logs.replace('\n', '<br>\n')
+        return jsonify(logs.split('\n')), 200
     except FileNotFoundError:
-        return jsonify({'error': 'Log file not found'}), 404
+        return jsonify(['Log file not found']), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify([str(e)]), 500
 
+"""
+@todo:
+    - change to status; get {cpu, memory, status}
+"""
 @app.route('/htop', methods=['GET'])
 def get_htop():
     try:
@@ -148,6 +152,10 @@ def get_htop():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+"""
+@todo:
+    - allow only POST for start/stop/save
+"""
 @app.route('/service/terraria-server/<action>', methods=['POST', 'GET'])
 def control_service(action):
     name = 'terraria-server'
@@ -162,6 +170,10 @@ def control_service(action):
         return jsonify({'success': result.returncode == 0}), 201
     except Exception as e:
         return jsonify({'success': False}), 400
+
+"""
+@todo: route to download world backups
+"""
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
