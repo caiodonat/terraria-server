@@ -1,0 +1,3 @@
+*.venv
+pass.txt
+server/official-server/worlds/*

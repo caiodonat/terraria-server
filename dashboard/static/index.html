@@ -18,7 +18,14 @@
                 });
         }
         function controlService(action) {
-            fetch('/service/' + action, { method: 'POST' })
+            const password = document.getElementById('admin-password').value;
+            fetch('/service/' + action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ password: password })
+            })
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById('service-res').innerText = data;
@@ -79,13 +86,13 @@
                 },
                 body: JSON.stringify({ command: command })
             })
-            .then(response => response.text())
-            .then(data => {
-                console.log('Command sent:', data);
-            })
-            .catch(() => {
-                console.error('Error sending command');
-            });
+                .then(response => response.text())
+                .then(data => {
+                    console.log('Command sent:', data);
+                })
+                .catch(() => {
+                    console.error('Error sending command');
+                });
         }
 
         setInterval(updateStatus, 2000);
@@ -107,6 +114,9 @@
     <hr>
 
     <h2>Admin</h2>
+    <div style="display: flex; flex-direction: column; gap: 10px; max-width: 400px;">
+        <input type="password" id="admin-password" placeholder="Senha de admin" style="width:150px;">
+    </div>
     <div style="display: flex; gap: 10px; align-items: center;">
         <button onclick="controlService('start')">Iniciar</button>
         <button onclick="controlService('stop')">Parar</button>
@@ -114,7 +124,8 @@
     </div>
     <div style="margin-top: 10px;">
         <input type="text" id="command-input" placeholder="Digite o comando" style="width:200px;">
-        <button onclick="sendTerminalCommand(document.getElementById('command-input').value)">Enviar Comando</button>
+        <button onclick="sendTerminalCommand(document.getElementById('command-input').value)">Enviar
+            Comando</button>
     </div>
     </div>
     <hr>

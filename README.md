@@ -2,8 +2,35 @@
 
 Self host server with dashboard management
 
-Necessario que ã pasta esteja na raiz (`/`) do servidor e com todos privilegior:
-> sudo chmod -R 777 /terraria-server/
+## Getting Started
+
+Necessário que a pasta esteja na raiz (`/`) do servidor e com todos privilegio:
+
+```bash
+cd dashboard/
+
+python3 -m venv .venv
+
+.venv/bin/pip install -r requirements.txt
+
+
+```
+
+```bash
+sudo chmod -R 777 /terraria-server/
+
+sudo chmod +x /terraria-server/
+```
+
+```bash
+sudo chmod +x dashboard/start-app.sh
+```
+
+```bash
+sudo 
+```
+
+
 
 ## todo
 

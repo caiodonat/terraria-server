@@ -9,6 +9,14 @@ service_name = 'terraria-server'
 log_file_path = '/terraria-server/server/official-server.log' # 'terraria-server/server/official-server.log'
 config_path = '/terraria-server/server/serverconfig.txt'
 
+with open('/terraria-server/dashboard/pass.txt', 'r') as f:
+    passes = [line.strip() for line in f if line.strip()]
+
+def has_valid_pass(req):
+    data = req.get_json() if req.is_json else req.form
+    password = data.get('password') if data else req.args.get('password')
+    return password in passes
+
 
 @app.route('/', methods=['GET'])
 def control_index():
@@ -67,6 +75,10 @@ def get_specs():
 def control_service(action):
     if action not in ['start', 'stop']:
         return jsonify({'error': 'Invalid action'}), 400
+
+    if not has_valid_pass(request):
+        return jsonify({'error': 'Unauthorized'}), 401
+
     try:
         result = subprocess.run(['sudo','systemctl', action, service_name],
             stdout=subprocess.PIPE,
@@ -79,6 +91,9 @@ def control_service(action):
 
 @app.route('/terminal', methods=['POST'])
 def control_terminal():
+    if not has_valid_pass(request):
+        return jsonify({'error': 'Unauthorized'}), 401
+
     data = request.get_json()
     command = data.get('command') if data else None
     try:
