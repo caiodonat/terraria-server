@@ -79,12 +79,13 @@
             }
         }
         function sendTerminalCommand(command) {
+            const password = document.getElementById('admin-password').value;
             fetch('/terminal', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ command: command })
+                body: JSON.stringify({ command: command, password: password })
             })
                 .then(response => response.text())
                 .then(data => {
