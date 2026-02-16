@@ -111,7 +111,7 @@ def control_terminal():
 @app.route('/world', methods=['GET'])
 def download_world():
     server_world_name = 'server-world.wld'
-    server_world_path= '/terraria-server/server/official-server/worlds/'
+    server_world_path= '/terraria-server/server/worlds/'
     try:
         with open(config_path, 'r') as f:
             for line in f:

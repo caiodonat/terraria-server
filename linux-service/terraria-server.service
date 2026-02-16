@@ -1,6 +1,6 @@
 # /etc/systemd/system/terraria-server.service
 [Unit]
-Description=Terraria Server
+Description=Terraria Server Service
 
 [Service]
 Type=forking

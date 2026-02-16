@@ -1,3 +1,6 @@
 *.venv
 pass.txt
-server/official-server/worlds/*
+server/worlds/*
+!server/worlds
+server/official-server/*
+!server/official-server/
